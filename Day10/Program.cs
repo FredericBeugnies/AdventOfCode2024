@@ -44,6 +44,39 @@ for (int x = 0; x < Problem.Size; x++)
         totalScore += reachable[x, y, 0].Count();
 Console.WriteLine(totalScore);
 
+// part 2
+
+// ratings[z][x, y] = rating of pos (x, y), considering trails starting at height z (i.e. mark a path z ... 9)
+Grid[] ratings = new Grid[Problem.MaxHeight + 1];
+ratings[zmax] = new Grid();
+for (int x = 0; x < Problem.Size; x++)
+    for (int y = 0; y < Problem.Size; y++)
+        ratings[zmax].Set(x, y, topo.Get(x, y) == zmax ? 1 : 0);
+
+for (int z = Problem.MaxHeight - 1; z >= 0; z--)
+{
+    ratings[z] = new Grid();
+    for (int x = 0; x < Problem.Size; x++)
+        for (int y = 0; y < Problem.Size; y++)
+        {
+            int rating = 0;
+            if (topo.Get(x, y) == z)
+            {
+                rating += ratings[z + 1].Get(x - 1, y) ?? 0;
+                rating += ratings[z + 1].Get(x + 1, y) ?? 0;
+                rating += ratings[z + 1].Get(x, y - 1) ?? 0;
+                rating += ratings[z + 1].Get(x, y + 1) ?? 0;
+            }
+            ratings[z].Set(x, y, rating);
+        }
+}
+
+int sumRatings = 0;
+for (int x = 0; x < Problem.Size; x++)
+    for (int y = 0; y < Problem.Size; y++)
+        sumRatings += ratings[0].Get(x, y) ?? 0;
+Console.WriteLine(sumRatings);
+
 bool OutOfBounds(int x, int y)
 {
     return x < 0 || y < 0 || x >= Problem.Size || y >= Problem.Size;
@@ -52,7 +85,6 @@ bool OutOfBounds(int x, int y)
 static class Problem
 {
     public const int Size = 56;
-    public const int MinHeight = 0;
     public const int MaxHeight = 9;
 }
 
@@ -66,21 +98,11 @@ struct Pos
         this.x = x;
         this.y = y;
     }
-
-    public bool OutOfBounds()
-    {
-        return x < 0 || y < 0 || x >= Problem.Size || y >= Problem.Size;
-    }
 }
 
 class Grid
 {
     public int[,] m = new int[Problem.Size, Problem.Size];
-
-    public void Set(Pos pos, int val)
-    {
-        Set(pos.x, pos.y, val);
-    }
 
     public void Set(int x, int y, int val)
     {
@@ -95,16 +117,5 @@ class Grid
     public bool OutOfBounds(int x, int y)
     {
         return x < 0 || y < 0 || x >= Problem.Size || y >= Problem.Size;
-    }
-
-    public void Print()
-    {
-        for (int y = 0; y < Problem.Size;y++)
-        {
-            for (int x = 0;x < Problem.Size;x++)
-                Console.Write($"{m[x, y]} ");
-            Console.WriteLine();
-        }
-        Console.WriteLine();
     }
 }
