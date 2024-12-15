@@ -63,6 +63,8 @@ for (int zr = zones.Count - 1; zr >= 0; --zr)
                 ++zr;
                 zones[zr].Type = ZoneType.EmptySpace;
                 zones[zr].FileId = -1;
+
+                break;
             }
         }
     }
