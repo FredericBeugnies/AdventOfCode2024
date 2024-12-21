@@ -1,24 +1,52 @@
 ﻿var lines = File.ReadAllLines("input.txt");
 
-Part1(lines);
+Pos start = default;
+Pos end = default;
+char[,] grid = new char[Problem.Size, Problem.Size];
+for (int y = 0; y < lines.Length; y++)
+    for (int x = 0; x < lines[y].Length; x++)
+    {
+        grid[x, y] = lines[y][x];
+        if (grid[x, y] == 'S')
+            start = new Pos(x, y);
+        else if (grid[x, y] == 'E')
+            end = new Pos(x, y);
+    }
 
-void Part1(string[] lines)
-{
-    Pos start = default;
-    Pos end = default;
-    char[,] grid = new char[Problem.Size, Problem.Size];
-    for (int y = 0; y < lines.Length; y++)
-        for (int x = 0; x < lines[y].Length; x++)
+var originalGrid = grid.Clone() as char[,]; // keep original for diaply purposes at the end
+CloseDeadEnds(grid);
+
+// part 1
+var shortestPathsFromStart = ComputeShortestPaths(grid, start, Orientation.Right);
+int targetDistance = shortestPathsFromStart[end.x, end.y].Distance;
+
+// part 2
+var shortestPathsFromEnd = ComputeShortestPaths(grid, end, Orientation.Down);
+
+int nbBigOs = 0;
+bool[,] bigOs = new bool[Problem.Size, Problem.Size];
+for (int y = 0; y < lines.Length; y++)
+    for (int x = 0; x < lines[y].Length; x++)
+    {
+        if (grid[x, y] == '#')
+            continue;
+        var pathS = shortestPathsFromStart[x, y];
+        var pathE = shortestPathsFromEnd[x, y];
+        int distance = pathS.Distance + pathE.Distance + NbTurns(pathS.ReachedOrientation, GetOpposite(pathE.ReachedOrientation)) * 1000;
+        if (distance == targetDistance) // should never be <
         {
-            grid[x, y] = lines[y][x];
-            if (grid[x, y] == 'S')
-                start = new Pos(x, y);
-            else if (grid[x, y] == 'E')
-                end = new Pos(x, y);
+            bigOs[x, y] = true;
+            ++nbBigOs;
         }
+    }
 
-    CloseDeadEnds(grid);
+// output results
+DisplayGrid2(originalGrid, bigOs);
+Console.WriteLine($"Part 1: {targetDistance}");
+Console.WriteLine($"Part 2: {nbBigOs}");
 
+CellState[,] ComputeShortestPaths(char[,] grid, Pos start, Orientation o)
+{
     CellState[,] state = new CellState[Problem.Size, Problem.Size];
     List<Pos> reached = [];
     for (int y = 0; y < lines.Length; y++)
@@ -28,11 +56,9 @@ void Part1(string[] lines)
             if (grid[x, y] == '#') state[x, y].IsWall = true;
         }
     state[start.x, start.y].IsReached = true;
+    state[start.x, start.y].ReachedOrientation = o;
     reached.Add(start);
 
-    DisplayGrid(grid);
-
-    // compute shortest path
     do
     {
         int minDistance = Int32.MaxValue;
@@ -41,36 +67,44 @@ void Part1(string[] lines)
         // evaluate possible moves
         foreach (var pos in reached)
         {
-            bool removePosFromActiveSet = true;
+            var r = state[pos.x, pos.y];
+            if (r.AllNeighboursReached)
+                continue;
+
+            bool allNeighboursReached = true;
             foreach (var neighbour in GetNeighbours(pos))
             {
                 var neighbourState = state[neighbour.p.x, neighbour.p.y];
                 if (neighbourState.IsWall || neighbourState.IsReached)
                     continue;
-                removePosFromActiveSet = false;
+                allNeighboursReached = false;
 
                 // compute distance from pos to neighbour
-                int distance = state[pos.x, pos.y].Distance + 1 + NbTurns(state[pos.x, pos.y].ReachedOrientation, neighbour.o) * 1000;
+                int distance = r.Distance + 1 + NbTurns(r.ReachedOrientation, neighbour.o) * 1000;
                 if (distance < minDistance)
                 {
                     minDistance = distance;
                     closestNeighbour = neighbour;
                 }
             }
+            if (allNeighboursReached)
+                state[pos.x, pos.y].AllNeighboursReached = true;
         }
 
-        reached.Add(closestNeighbour.p);
-        state[closestNeighbour.p.x, closestNeighbour.p.y].IsReached = true;
-        state[closestNeighbour.p.x, closestNeighbour.p.y].Distance = minDistance;
-        state[closestNeighbour.p.x, closestNeighbour.p.y].ReachedOrientation = closestNeighbour.o;
-        if (closestNeighbour.p.x == end.x && closestNeighbour.p.y == end.y)
+        if (minDistance < Int32.MaxValue)
+        {
+            reached.Add(closestNeighbour.p);
+            state[closestNeighbour.p.x, closestNeighbour.p.y].IsReached = true;
+            state[closestNeighbour.p.x, closestNeighbour.p.y].Distance = minDistance;
+            state[closestNeighbour.p.x, closestNeighbour.p.y].ReachedOrientation = closestNeighbour.o;
+        }
+        else
         {
             break;
         }
     } while (true);
 
-    int res = state[end.x, end.y].Distance;
-    Console.WriteLine($"Part 1: {res}");
+    return state;
 }
 
 void CloseDeadEnds(char[,] grid)
@@ -101,12 +135,15 @@ void CloseDeadEnds(char[,] grid)
     } while (deadEndFound);
 }
 
-void DisplayGrid(char[,] grid)
+void DisplayGrid2(char[,] grid, bool[,] bigOs)
 {
     for (int y = 0; y < grid.GetLength(0); y++)
     {
         for (int x = 0; x < grid.GetLength(1); x++)
-            Console.Write(grid[x, y]);
+            if (bigOs[x, y])
+                Console.Write('O');
+            else
+                Console.Write(grid[x, y]);
         Console.WriteLine();
     }
     Console.WriteLine();
@@ -121,6 +158,18 @@ List<OrientedPos> GetNeighbours(Pos p)
         new OrientedPos(p + new Pos(1, 0), Orientation.Right),
         new OrientedPos(p + new Pos(-1, 0), Orientation.Left)
     };
+}
+
+Orientation GetOpposite(Orientation o)
+{
+    switch (o)
+    {
+        case Orientation.Up: return Orientation.Down;
+        case Orientation.Down: return Orientation.Up;
+        case Orientation.Left: return Orientation.Right;
+        case Orientation.Right: return Orientation.Left;
+        default: return Orientation.Up;
+    }
 }
 
 int NbTurns(Orientation o1, Orientation o2)
@@ -181,6 +230,7 @@ struct CellState
 {
     public bool IsWall;
     public bool IsReached;
+    public bool AllNeighboursReached;
     public Orientation ReachedOrientation;
     public int Distance;
 
