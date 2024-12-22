@@ -14,8 +14,36 @@ var tokensP = lines[4].Replace("Program: ", "").Split(',', StringSplitOptions.Re
 foreach (var token in tokensP)
     program.Add(int.Parse(token));
 
+// part 1
 RunProgram(program, registers, out var output);
-WriteOutput(output);
+Console.WriteLine($"Part 1: {CollateOutput(output)}");
+
+// part 2
+List<long>[] candidates = new List<long>[program.Count + 1];
+candidates[program.Count] = [0]; // A == 0 at the end of the last iteration
+
+for (int i = program.Count - 1; i >= 0; i--)
+{
+    // compute candidates for value of 'A' at end of iteration 'i'
+    // based on next iteration outcome
+    candidates[i] = [];
+    foreach (var c in candidates[i + 1])
+    {
+        for (int modulo = 0; modulo < 8; ++modulo)
+        {
+            long a = c * 8 + modulo; // candidate for value 'A' at iteration i
+
+            // check if subsequent 'B' value is consistent with program
+            long bb = (int)(a % 8) ^ 5;
+            long b = (bb ^ 6) ^ (long)(a / Math.Pow(2, bb));
+            if (b % 8 == program[i])
+                candidates[i].Add(a);
+        }
+    }
+}
+
+// turns out the candidates list is already sorted
+Console.WriteLine($"Part 2: {candidates[0][0]}");
 
 void RunProgram(List<int> program, int[] registers, out List<int> output)
 {
@@ -70,24 +98,12 @@ int GetComboOperandValue(int operand, int[] registers)
         case 4: return registers[0];
         case 5: return registers[1];
         case 6: return registers[2];
-        case 7: return default;
+        case 7: return default; // should never happen
         default: return operand;
     }
 }
 
-void WriteOutput(List<int> output)
+string CollateOutput(List<int> output)
 {
-    Console.Write($"{output[0]}");
-    for (int i = 1; i < output.Count; i++)
-    {
-        Console.Write($",{output[i]}");
-    }
-    Console.WriteLine();
-}
-
-enum Register
-{
-    A,
-    B,
-    C,
+    return string.Join(',', output);
 }
