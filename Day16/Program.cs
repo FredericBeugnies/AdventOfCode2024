@@ -140,7 +140,9 @@ void DisplayGrid2(char[,] grid, bool[,] bigOs)
     for (int y = 0; y < grid.GetLength(0); y++)
     {
         for (int x = 0; x < grid.GetLength(1); x++)
-            if (bigOs[x, y])
+            if (grid[x, y] == 'S' || grid[x, y] == 'E')
+                Console.Write(grid[x, y]);
+            else if (bigOs[x, y])
                 Console.Write('O');
             else
                 Console.Write(grid[x, y]);
