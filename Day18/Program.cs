@@ -10,14 +10,37 @@ for (int i = 0; i < 1024; ++i)
     grid[x, y] = true;
 }
 
+// part 1
 var start = new Pos(0, 0);
 var end = new Pos(Problem.Size - 1, Problem.Size - 1);
 var sp = ComputeShortestPaths(grid, start);
 
 Console.WriteLine($"Part 1: {sp[end.x, end.y].Distance}");
 
+// part 2
+int answer = 0;
+for (int i = 1024; i < input.Length; ++i)
+{
+    var tokens = input[i].Split(',');
+    int x = int.Parse(tokens[0]);
+    int y = int.Parse(tokens[1]);
+    grid[x, y] = true;
+
+    var spi = ComputeShortestPaths(grid, start);
+
+    if (!spi[end.x, end.y].IsReached)
+    {
+        answer = i;
+        break;
+    }
+}
+
+Console.WriteLine($"Part 2: {input[answer]}");
+
 CellState[,] ComputeShortestPaths(bool[,] grid, Pos start)
 {
+    // shortest path algorithm from day 16 without the orientation-related stuff.
+    // => not the most suited algo for this problem, but still does the job
     CellState[,] state = new CellState[Problem.Size, Problem.Size];
     List<Pos> reached = [];
     for (int y = 0; y < Problem.Size; y++)
