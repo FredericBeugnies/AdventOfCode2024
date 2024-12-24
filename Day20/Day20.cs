@@ -2,7 +2,6 @@
 
 // parse input
 Pos start = default;
-Pos end = default;
 char[,] grid = new char[Problem.Size, Problem.Size];
 for (int y = 0; y < input.Length; y++)
     for (int x = 0; x < input[y].Length; x++)
@@ -10,48 +9,61 @@ for (int y = 0; y < input.Length; y++)
         grid[x, y] = input[y][x];
         if (grid[x, y] == 'S')
             start = new Pos(x, y);
-        else if (grid[x, y] == 'E')
-            end = new Pos(x, y);
     }
 
 // part 1
 var sp = ComputeShortestPaths(grid, start);
+var cheats1 = ComputeCheats(grid, sp, 2);
+Console.WriteLine($"Part 1: {cheats1.Count}");
 
-List<Cheat> cheats = [];
-for (int y = 0; y < Problem.Size; y++)
+// part 2
+var cheats2 = ComputeCheats(grid, sp, 20);
+Console.WriteLine($"Part 2: {cheats2.Count}");
+
+List<Cheat> ComputeCheats(char[,] grid, CellState[,] shortestPaths, int cheatDuration)
 {
-    for (int x = 0; x < Problem.Size; x++)
+    List<Cheat> cheats = [];
+    for (int y = 0; y < Problem.Size; y++)
     {
-        if (grid[x, y] != '#')
-            continue;
-
-        Pos p = new Pos(x, y);
-        var neighbours = GetNeighbours(p);
-        for (int i = 0; i < neighbours.Count; ++i)
+        for (int x = 0; x < Problem.Size; x++)
         {
-            for (int j = 0; j < neighbours.Count; j++)
+            if (grid[x, y] == '#')
+                continue;
+            if (!shortestPaths[x, y].IsReached)
+                continue;
+
+            for (int dy = -cheatDuration; dy <= cheatDuration; dy++)
             {
-                if (i == j) continue;
-                if (OutOfBounds(neighbours[i]) || OutOfBounds(neighbours[j]))
-                    continue;
-                if (grid[neighbours[i].x, neighbours[i].y] == '#' || grid[neighbours[j].x, neighbours[j].y] == '#')
-                    continue;
-                int saving = sp[neighbours[i].x, neighbours[i].y].Distance - sp[neighbours[j].x, neighbours[j].y].Distance;
-                if (saving > 100)
+                for (int dx = -cheatDuration; dx <= cheatDuration; dx++)
                 {
-                    cheats.Add(new Cheat
+                    if (dx == 0 && dy == 0)
+                        continue;
+                    if (Math.Abs(dx) + Math.Abs(dy) > cheatDuration)
+                        continue;
+
+                    Pos p1 = new Pos(x, y);
+                    Pos p2 = new Pos(x + dx, y + dy);
+                    if (OutOfBounds(p1) || OutOfBounds(p2))
+                        continue;
+                    if (grid[p1.x, p1.y] == '#' || grid[p2.x, p2.y] == '#')
+                        continue;
+                    int saving = shortestPaths[p1.x, p1.y].Distance - shortestPaths[p2.x, p2.y].Distance - Math.Abs(dx) - Math.Abs(dy);
+                    if (saving >= 100)
                     {
-                        from = neighbours[i],
-                        to = neighbours[j],
-                        saving = saving,
-                    });
+                        cheats.Add(new Cheat
+                        {
+                            from = p1,
+                            to = p2,
+                            saving = saving,
+                        });
+                    }
                 }
             }
         }
     }
-}
 
-Console.WriteLine($"Part 1: {cheats.Count}");
+    return cheats;
+}
 
 CellState[,] ComputeShortestPaths(char[,] grid, Pos start)
 {
@@ -115,24 +127,6 @@ CellState[,] ComputeShortestPaths(char[,] grid, Pos start)
     } while (true);
 
     return state;
-}
-
-void Display(char[,] grid, CellState[,] shortestPaths)
-{
-    for (int y = 0; y < Problem.Size; y++)
-    {
-        for (int x = 0; x < Problem.Size; x++)
-        {
-            if (grid[x, y] == '#')
-                Console.Write("#####");
-            else if (grid[x, y] == 'S' || grid[x, y] == 'E')
-                Console.Write(grid[x, y].ToString().PadRight(5));
-            else
-                Console.Write(shortestPaths[x, y].Distance.ToString().PadRight(5));
-        }
-        Console.WriteLine();
-    }
-    Console.WriteLine();
 }
 
 bool OutOfBounds(Pos p)
